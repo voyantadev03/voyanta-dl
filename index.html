@@ -120,19 +120,14 @@
             margin-top: 20px;
             line-height: 1.6;
         }
-
-        .icon-app {
-            font-size: 60px;
-            margin-bottom: 20px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="icon-app">🌍</div>
+        <div class="logo">🌍</div>
         <h1 id="title">Opening Trip...</h1>
         <p class="subtitle" id="subtitle">Getting ready to show you the trip details</p>
-        
+       
         <div class="loading">
             <div class="spinner"></div>
         </div>
@@ -144,56 +139,65 @@
         <div class="error" id="error"></div>
 
         <p class="info-text">
-            <strong>Not opening?</strong> Tap the button below or manually search for the trip in the app.
+            <strong>Not opening?</strong> Tap the button below or search for the trip in the app.
         </p>
     </div>
 
     <script>
-        // Detect if app is installed and redirect accordingly
         function handleDeepLink() {
             // Get the trip ID from URL
-            const pathSegments = window.location.pathname.split('/');
-            const tripIndex = pathSegments.indexOf('trip');
-            const tripId = tripIndex !== -1 ? pathSegments[tripIndex + 1] : null;
+            // URL format: https://yourusername.github.io/voyanta-deeplink/?trip=TRIP_ID
+            // OR: https://yourusername.github.io/voyanta-deeplink/#trip=TRIP_ID
+           
+            const params = new URLSearchParams(window.location.search);
+            const hash = new URLSearchParams(window.location.hash.substring(1));
+           
+            let tripId = params.get('trip') || hash.get('trip');
 
             if (!tripId) {
-                showError('Invalid trip link');
+                // Try to get from path: /trip/TRIP_ID or similar
+                const pathParts = window.location.pathname.split('/');
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                    if (pathParts[i] === 'trip' && pathParts[i + 1]) {
+                        tripId = pathParts[i + 1];
+                        break;
+                    }
+                }
+            }
+
+            if (!tripId) {
+                showError('Invalid trip link - no trip ID found. Please try again.');
                 return;
             }
 
-            // Change title to show trip ID
+            // Update page title
             document.getElementById('title').textContent = 'Opening Trip...';
             document.getElementById('subtitle').textContent = `Trip ID: ${tripId}`;
-
-            // Try to open the app with deep link
-            const deepLinkUrl = `voyanta://trip/${tripId}`;
-            const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.voyanta.app';
-            
-            // Show loading
             document.querySelector('.loading').style.display = 'block';
 
-            // Attempt to open the app
+            // Deep link URLs
+            const deepLinkUrl = `voyanta://trip/${tripId}`;
+            const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.voyanta.app';
+
+            // Try to open the app
             const startTime = Date.now();
             window.location.href = deepLinkUrl;
 
-            // Check if app was opened (app close usually prevents redirect)
-            setTimeout(() => {
+            // If app didn't open after 1.5 seconds, redirect to Play Store
+            const timeout = setTimeout(() => {
                 const elapsed = Date.now() - startTime;
-                
-                // If more than 2 seconds elapsed, app likely didn't open
-                if (elapsed > 2000) {
-                    // App not installed, redirect to Play Store
+                if (elapsed > 1500) {
                     window.location.href = playStoreUrl;
                 }
             }, 1500);
 
-            // Fallback buttons if user wants manual action
+            // Show fallback buttons in case user wants to manually choose
             document.getElementById('buttons').innerHTML = `
                 <a href="${deepLinkUrl}" class="button button-primary">
                     Open in Voyanta
                 </a>
                 <a href="${playStoreUrl}" class="button button-secondary">
-                    Download App
+                    Download from Play Store
                 </a>
             `;
         }
@@ -203,8 +207,7 @@
             const errorDiv = document.getElementById('error');
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
-            
-            const tripId = new URLSearchParams(window.location.search).get('trip') || 'unknown';
+           
             document.getElementById('buttons').innerHTML = `
                 <a href="https://play.google.com/store/apps/details?id=com.voyanta.app" class="button button-primary">
                     Download Voyanta
@@ -212,20 +215,11 @@
             `;
         }
 
-        // Check if page is being viewed
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', handleDeepLink);
-        } else {
-            handleDeepLink();
-        }
-
-        // Handle page visibility to retry if app wasn't opened
+        // When user comes back to browser (app didn't open)
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                // User came back to browser, app likely didn't open
-                const pathSegments = window.location.pathname.split('/');
-                const tripIndex = pathSegments.indexOf('trip');
-                const tripId = tripIndex !== -1 ? pathSegments[tripIndex + 1] : null;
+                const params = new URLSearchParams(window.location.search);
+                const tripId = params.get('trip');
 
                 if (tripId) {
                     document.getElementById('buttons').innerHTML = `
@@ -239,6 +233,13 @@
                 }
             }
         });
+
+        // Run on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', handleDeepLink);
+        } else {
+            handleDeepLink();
+        }
     </script>
 </body>
 </html>
