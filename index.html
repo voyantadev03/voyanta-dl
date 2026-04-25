@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voyanta - Trip Details</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #0F172A;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #64748B;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 10px 5px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .button-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .button-secondary {
+            background: #F0F4F8;
+            color: #667eea;
+            border: 2px solid #E2E8F0;
+        }
+
+        .button-secondary:hover {
+            background: #E2E8F0;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #F0F4F8;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            display: none;
+            background: #FEE2E2;
+            color: #DC2626;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .info-text {
+            font-size: 14px;
+            color: #94A3B8;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+
+        .icon-app {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon-app">🌍</div>
+        <h1 id="title">Opening Trip...</h1>
+        <p class="subtitle" id="subtitle">Getting ready to show you the trip details</p>
+        
+        <div class="loading">
+            <div class="spinner"></div>
+        </div>
+
+        <div id="buttons">
+            <!-- Buttons will be inserted here by JavaScript -->
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <p class="info-text">
+            <strong>Not opening?</strong> Tap the button below or manually search for the trip in the app.
+        </p>
+    </div>
+
+    <script>
+        // Detect if app is installed and redirect accordingly
+        function handleDeepLink() {
+            // Get the trip ID from URL
+            const pathSegments = window.location.pathname.split('/');
+            const tripIndex = pathSegments.indexOf('trip');
+            const tripId = tripIndex !== -1 ? pathSegments[tripIndex + 1] : null;
+
+            if (!tripId) {
+                showError('Invalid trip link');
+                return;
+            }
+
+            // Change title to show trip ID
+            document.getElementById('title').textContent = 'Opening Trip...';
+            document.getElementById('subtitle').textContent = `Trip ID: ${tripId}`;
+
+            // Try to open the app with deep link
+            const deepLinkUrl = `voyanta://trip/${tripId}`;
+            const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.voyanta.app';
+            
+            // Show loading
+            document.querySelector('.loading').style.display = 'block';
+
+            // Attempt to open the app
+            const startTime = Date.now();
+            window.location.href = deepLinkUrl;
+
+            // Check if app was opened (app close usually prevents redirect)
+            setTimeout(() => {
+                const elapsed = Date.now() - startTime;
+                
+                // If more than 2 seconds elapsed, app likely didn't open
+                if (elapsed > 2000) {
+                    // App not installed, redirect to Play Store
+                    window.location.href = playStoreUrl;
+                }
+            }, 1500);
+
+            // Fallback buttons if user wants manual action
+            document.getElementById('buttons').innerHTML = `
+                <a href="${deepLinkUrl}" class="button button-primary">
+                    Open in Voyanta
+                </a>
+                <a href="${playStoreUrl}" class="button button-secondary">
+                    Download App
+                </a>
+            `;
+        }
+
+        function showError(message) {
+            document.querySelector('.loading').style.display = 'none';
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            const tripId = new URLSearchParams(window.location.search).get('trip') || 'unknown';
+            document.getElementById('buttons').innerHTML = `
+                <a href="https://play.google.com/store/apps/details?id=com.voyanta.app" class="button button-primary">
+                    Download Voyanta
+                </a>
+            `;
+        }
+
+        // Check if page is being viewed
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', handleDeepLink);
+        } else {
+            handleDeepLink();
+        }
+
+        // Handle page visibility to retry if app wasn't opened
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // User came back to browser, app likely didn't open
+                const pathSegments = window.location.pathname.split('/');
+                const tripIndex = pathSegments.indexOf('trip');
+                const tripId = tripIndex !== -1 ? pathSegments[tripIndex + 1] : null;
+
+                if (tripId) {
+                    document.getElementById('buttons').innerHTML = `
+                        <a href="voyanta://trip/${tripId}" class="button button-primary">
+                            Open in Voyanta
+                        </a>
+                        <a href="https://play.google.com/store/apps/details?id=com.voyanta.app" class="button button-secondary">
+                            Download App
+                        </a>
+                    `;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
